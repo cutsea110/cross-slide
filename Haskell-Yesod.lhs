@@ -211,50 +211,7 @@ A5.
 Q6. スライドで読める程度のコード(Hello Worldに毛が生えたくらい)
 A6.
 
-以下のどっちかを使う予定.
-
----------------------------------------------------------
-本当に小さなのHelloに毛が生えたやつ.(non-db)
-
-<<<
-{-# LANGUAGE TypeFamilies, QuasiQuotes, MultiParamTypeClasses, TemplateHaskell, OverloadedStrings #-}
-
-import Yesod
-
-data Hello = Hello
-
-mkYesod "Hello" [parseRoutes|
-/             RootR  GET
-/user/#String UserR GET
-|]
-
-instance Yesod Hello where
- approot _ = ""
-
-getRootR :: Handler RepHtml
-getRootR = do 
-  let names = words "かつとし けいこ Michael"
-  defaultLayout [whamlet|
-<h1>Hello World!
-<ul>
-  $forall name <- names
-    <li>
-      <a href=@{UserR name}>#{name}
-|]
-
-getUserR :: String -> Handler RepHtml
-getUserR name = defaultLayout [whamlet|
-<h1>#{name}'s Page
-<h2>#{name}の紹介
-<a href=@{RootR}>ホームへ
-|]
-
-main :: IO ()
-main = warpDebug 3000 Hello
->>>
-
----------------------------------------------------------
-やはりDBがあった方が。(with-db)
+Linksアプリで紹介(bookmark)
 
 <<<
 {-# LANGUAGE TypeFamilies, QuasiQuotes, MultiParamTypeClasses, TemplateHaskell, OverloadedStrings #-}
@@ -262,76 +219,90 @@ main = warpDebug 3000 Hello
 
 import Yesod
 import Database.Persist.Sqlite
+import Data.Text (Text)
+import Control.Applicative ((<$>),(<*>))
 
-data Hello = Hello ConnectionPool
+data Links = Links ConnectionPool
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
-User
-  name String
-  age Int Maybe
+Link
+  title Text
+  url Text
 |]
 
-mkYesod "Hello" [parseRoutes|
+mkYesod "Links" [parseRoutes|
 / RootR GET
-/person/#UserId UserR GET
+/add-link AddLinkR POST
 |]
 
-instance Yesod Hello where
+instance Yesod Links where
  approot _ = ""
+ 
+instance RenderMessage Links FormMessage where
+  renderMessage _ _ = defaultFormMessage
 
-instance YesodPersist Hello where
-  type YesodPersistBackend Hello = SqlPersist
-  runDB action = liftIOHandler $ do
-    Hello pool <- getYesod
-    runSqlPool action pool
+instance YesodPersist Links where
+  type YesodPersistBackend Links = SqlPersist
+  runDB action = do
+    Links pool <- getYesod
+    liftIOHandler $ runSqlPool action pool
 
 getRootR :: Handler RepHtml
-getRootR = do
-  users <- runDB $ selectList [][]
-  defaultLayout [whamlet|
-<h1>ユーザ一覧
-<ul>
-  $forall user <- users
-    <li>
-      <a href=@{UserR $ fst user}>#{userName $ snd user}
+getRootR = defaultLayout $ do
+  toWidget [lucius|.message{color:red;}|]
+  [whamlet|
+<form method=post action=@{AddLinkR}>
+  <p>
+    URL #
+    <input type=url name=url value=http://>
+    \ タイトル #
+    <input type=text name=title>
+    \ #
+    <input type=submit value="リンクを追加する">
+<h2>登録済みのリンク
+^{existingLinks}
 |]
 
-getUserR :: UserId -> Handler RepHtml
-getUserR uid = do
-  user <- runDB $ get404 uid
-  defaultLayout [whamlet|
-<h1>#{userName user}'s Page
-<dl>
-  <dt>なまえ
-  <dd>#{userName user}
-  <dt>ねんれい
-  <dd>
-    $maybe age <- userAge user
-      #{show age}さい
-    $nothing
-      ヒ・ミ・ツ
+existingLinks :: Widget
+existingLinks = do
+  links <- lift $ runDB $ selectList [] []
+  toWidget [lucius|li{list-style-type:none;}|]
+  [whamlet|
+<ul>
+  $forall link <- links
+    <li>
+      <a href=#{linkUrl $ snd link}>#{linkTitle $ snd link}
 |]
+
+postAddLinkR :: Handler ()
+postAddLinkR = do
+  link <- runInputPost $ Link
+          <$> ireq textField "title"
+          <*> ireq urlField "url"
+  runDB $ insert link
+  setMessage "リンクを追加しました."
+  redirect RedirectSeeOther RootR
 
 main :: IO ()
 main = withSqlitePool ":memory:" 10 $ \pool -> do
   flip runSqlPool pool $ do
     runMigration migrateAll
-    insert $ User "伊東 勝利" $ Just 41
-    insert $ User "伊東 佳子" Nothing
-    insert $ User "Michael Snoyman" $ Just 26
-  warpDebug 3000 $ Hello pool
+  warpDebug 3000 $ Links pool
 >>>
 
 ---------------------------------------------------------
 Q7. 同じことをするWebアプリのコードから、言語・フレームワークの特徴を紹介する
 A7
 
-A6のHelloで説明するということでよろしいでしょうか.
+A6のLinksで説明するということでよろしいでしょうか.
 
-1. アプリケーションがHelloというデータになっている.
+1. アプリケーションがHello/Linksというデータになっている.
 2. YesodアプリにするのにYesodクラスのインスタンスにしている.
 3. defaultLayoutでサイトのデフォルトページを設定できる.(Yesodクラスのメンバ)
-4. selectList[][]だけでもUserテーブルをselectできてる.(型推論でクエリ対象テーブルを判断可能)
+4. selectList[][]だけでもLinkテーブルをselectできてる.(型推論でクエリ対象テーブルを判断可能)
+   (linkUrlやlinkTitleの使用により型が判断できる)
 5. get404はIDでクエリして、あれば値をなければ404 Not Foundを返すといった高水準のAPIもある.
-6. テンプレート中の@{UserR $ fst user}も型検査されている.
-   (@{UserR user}などと間違っていればエラーになり,リンク切れのままリリースすることはできない.)
+6. テンプレート中の@{AddLinkR}も型検査されている.
+   (間違っていればエラーになり,リンク切れのままリリースすることはできない.)
+7. HTML/CSS/Javascriptを(DBアクセスなどロジックも)コンポーネント化できる(Widget).
+   (複数のWidgetで使ったCSSやjavascriptは勝手にまとめられてhead/styleに.)
