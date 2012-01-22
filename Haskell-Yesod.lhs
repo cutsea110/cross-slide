@@ -220,9 +220,6 @@ existingLinks = do
 Q3. デメリット。こういうケースでは使うべきじゃない.
 A3. 
 
-Windows Server上で開発する必要がある場合.
-- GHC自体はWindows上でも動くがYesodは不明.
-
 少なくとも現状ではMySQL,Oracle,SQL ServerなどはサポートしてないのでこれらのDBに縛りがある場合.
 
 

@@ -5,7 +5,7 @@ import Yesod
 data Hello = Hello
 
 mkYesod "Hello" [parseRoutes|
-/             RootR  GET
+/             RootR GET
 /user/#String UserR GET
 |]
 
