@@ -177,6 +177,7 @@ deleteWhere [BlogPostAutherId ==. johnId]
 - 古いけどsnoymanのベンチマーク.
 - Web Application Interface(WAI)
 -- www.yesodweb.com/blog/2011/03/preliminary-warp-cross-language-benchmarks
+-- snapframework.com/blog/2010/11/17/snap-0.3-benchmarks
 - blaze-builder
 - Enumerator(-> Conduit)
 - Multi-threaded runtime
@@ -221,7 +222,7 @@ Q3. デメリット。こういうケースでは使うべきじゃない.
 A3. 
 
 少なくとも現状ではMySQL,Oracle,SQL ServerなどはサポートしてないのでこれらのDBに縛りがある場合.
-
+OpenID,OAuth,BrowserID,Emailリマインダ,HashDB以外の認証機構を使う縛りがある場合.
 
 ---------------------------------------------------------
 Q4. 適用事例.
