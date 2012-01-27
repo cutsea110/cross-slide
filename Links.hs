@@ -42,7 +42,7 @@ getRootR = defaultLayout $ do
     \ タイトル #
     <input type=text name=title>
     \ #
-    <input type=submit value="リンクを追加する">
+    <input type=submit value=リンクを追加する>
 <h2>登録済みのリンク
 ^{existingLinks}
 |]
@@ -60,9 +60,9 @@ existingLinks = do
 
 postAddLinkR :: Handler ()
 postAddLinkR = do
-  link <- runInputPost $ Link
-          <$> ireq textField "title"
-          <*> ireq urlField "url"
+  link <- runInputPost $ 
+          Link <$> ireq textField "title"
+               <*> ireq urlField "url"
   runDB $ insert link
   setMessage "リンクを追加しました."
   redirect RedirectSeeOther RootR
