@@ -60,8 +60,8 @@ existingLinks = do
 
 postAddLinkR :: Handler ()
 postAddLinkR = do
-  link <- runInputPost $ 
-          Link <$> ireq textField "title"
+  link <- runInputPost $ Link 
+               <$> ireq textField "title"
                <*> ireq urlField "url"
   runDB $ insert link
   setMessage "リンクを追加しました."
